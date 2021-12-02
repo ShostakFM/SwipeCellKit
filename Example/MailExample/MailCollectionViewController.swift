@@ -129,6 +129,10 @@ extension MailCollectionViewController: SwipeCollectionViewCellDelegate {
                 let cell = collectionView.cellForItem(at: indexPath) as! MailCollectionViewCell
                 cell.setUnread(updatedStatus, animated: true)
             }
+            let delete = SwipeAction(style: .destructive, title: nil) { action, indexPath in
+                self.emails.remove(at: indexPath.row)
+            }
+            configure(action: delete, with: .trash)
             
             read.hidesWhenSelected = true
             read.accessibilityLabel = email.unread ? "Mark as Read" : "Mark as Unread"
@@ -136,7 +140,7 @@ extension MailCollectionViewController: SwipeCollectionViewCellDelegate {
             let descriptor: ActionDescriptor = email.unread ? .read : .unread
             configure(action: read, with: descriptor)
             
-            return [read]
+            return [read, delete]
         } else {
             let flag = SwipeAction(style: .default, title: nil, handler: nil)
             flag.hidesWhenSelected = true
@@ -167,8 +171,13 @@ extension MailCollectionViewController: SwipeCollectionViewCellDelegate {
     
     func collectionView(_ collectionView: UICollectionView, editActionsOptionsForItemAt indexPath: IndexPath, for orientation: SwipeActionsOrientation) -> SwipeOptions {
         var options = SwipeOptions()
-        options.expansionStyle = orientation == .left ? .selection : .destructive
-        options.transitionStyle = defaultOptions.transitionStyle
+        if orientation == .right {
+            options.actionViewEdgeInset = UIEdgeInsets(top: .zero, left: .zero, bottom: .zero, right: 16)
+
+        } else {
+            options.actionViewEdgeInset = UIEdgeInsets(top: .zero, left: 16, bottom: .zero, right: .zero)
+        }
+        options.actionViewCornerRadius = 8
         
         switch buttonStyle {
         case .backgroundColor:

@@ -223,7 +223,7 @@ class SwipeController: NSObject {
         actionsContainerView.addSubview(actionsView)
         
         actionsView.heightAnchor.constraint(equalTo: swipeable.heightAnchor).isActive = true
-        actionsView.widthAnchor.constraint(equalTo: swipeable.widthAnchor, multiplier: 2).isActive = true
+        actionsView.widthAnchor.constraint(equalToConstant: swipeable.bounds.size.width + actionsView.preferredWidth).isActive = true
         actionsView.topAnchor.constraint(equalTo: swipeable.topAnchor).isActive = true
         
         if orientation == .left {
@@ -291,7 +291,7 @@ class SwipeController: NSObject {
             actionsContainerView.center = CGPoint(x: targetOffset, y: actionsContainerView.center.y)
             swipeable.actionsView?.visibleWidth = abs(actionsContainerView.frame.minX)
             swipeable.layoutIfNeeded()
-        }        
+        }
     }
     
     func stopAnimatorIfNeeded() {
@@ -461,8 +461,7 @@ extension SwipeController: SwipeActionsViewDelegate {
     
     func hideSwipe(animated: Bool, completion: ((Bool) -> Void)? = nil) {
         guard var swipeable = self.swipeable, let actionsContainerView = self.actionsContainerView else { return }
-        guard swipeable.state == .left || swipeable.state == .right else { return }
-        guard let actionView = swipeable.actionsView else { return }
+        guard swipeable.state != .animatingToCenter || swipeable.state != .dragging else { return }
         
         swipeable.state = .animatingToCenter
         
@@ -479,6 +478,7 @@ extension SwipeController: SwipeActionsViewDelegate {
             reset()
         }
         
+        guard let actionView = swipeable.actionsView else { return }
         delegate?.swipeController(self, didEndEditingSwipeableFor: actionView.orientation)
     }
     

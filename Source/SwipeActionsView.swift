@@ -42,6 +42,9 @@ class SwipeActionsView: UIView {
         guard let scrollView = self.safeAreaInsetView else { return 0 }
         return orientation == .left ? scrollView.safeAreaInsets.left : scrollView.safeAreaInsets.right
     }
+    
+    let viewInset: UIEdgeInsets
+    let additionalWidthInset: UIEdgeInsets
 
     var visibleWidth: CGFloat = 0 {
         didSet {
@@ -63,7 +66,7 @@ class SwipeActionsView: UIView {
     }
 
     var preferredWidth: CGFloat {
-        return minimumButtonWidth * CGFloat(actions.count) + safeAreaMargin
+        return minimumButtonWidth * CGFloat(actions.count) + safeAreaMargin + options.actionViewEdgeInset.left + options.actionViewEdgeInset.right
     }
 
     var contentSize: CGSize {
@@ -106,6 +109,11 @@ class SwipeActionsView: UIView {
         
         feedbackGenerator = SwipeFeedback(style: .light)
         feedbackGenerator.prepare()
+        self.viewInset = options.actionViewEdgeInset
+        
+        let leftInset = orientation == .left ? maxSize.width : .zero
+        let rightInset = orientation == .right ? maxSize.width : .zero
+        additionalWidthInset = UIEdgeInsets(top: .zero, left: leftInset, bottom: .zero, right: rightInset)
         
         super.init(frame: .zero)
         
@@ -116,18 +124,15 @@ class SwipeActionsView: UIView {
     #if canImport(Combine)
         if let backgroundColor = options.backgroundColor {
             self.backgroundColor = backgroundColor
-        }
-        else if #available(iOS 13.0, *) {
-            backgroundColor = UIColor.systemGray5
         } else {
-            backgroundColor = #colorLiteral(red: 0.7803494334, green: 0.7761332393, blue: 0.7967314124, alpha: 1)
+            backgroundColor = .clear
         }
     #else
         if let backgroundColor = options.backgroundColor {
             self.backgroundColor = backgroundColor
         }
         else {
-            backgroundColor = #colorLiteral(red: 0.7803494334, green: 0.7761332393, blue: 0.7967314124, alpha: 1)
+            backgroundColor = .clear
         }
     #endif
         
@@ -156,7 +161,15 @@ class SwipeActionsView: UIView {
         buttons.enumerated().forEach { (index, button) in
             let action = actions[index]
             let frame = CGRect(origin: .zero, size: CGSize(width: bounds.width, height: bounds.height))
-            let wrapperView = SwipeActionButtonWrapperView(frame: frame, action: action, orientation: orientation, contentWidth: minimumButtonWidth)
+            var position: ActionPosition = .middle
+            if index == 0 && index == buttons.count - 1 {
+                position = .single
+            } else if index == 0 {
+                position = .first
+            } else if index == buttons.count - 1  {
+                position = .last
+            }
+            let wrapperView = SwipeActionButtonWrapperView(frame: frame, action: action, orientation: orientation, contentWidth: minimumButtonWidth, position: position, cornerRadius: options.actionViewCornerRadius)
             wrapperView.translatesAutoresizingMaskIntoConstraints = false
             wrapperView.addSubview(button)
             
@@ -175,14 +188,15 @@ class SwipeActionsView: UIView {
             button.verticalAlignment = options.buttonVerticalAlignment
             button.shouldHighlight = action.hasBackgroundColor
             
-            wrapperView.leftAnchor.constraint(equalTo: leftAnchor).isActive = true
-            wrapperView.rightAnchor.constraint(equalTo: rightAnchor).isActive = true
+
+            wrapperView.leftAnchor.constraint(equalTo: leftAnchor, constant: viewInset.left + additionalWidthInset.left).isActive = true
+            wrapperView.rightAnchor.constraint(equalTo: rightAnchor, constant: -1 * (viewInset.right + additionalWidthInset.right)).isActive = true
             
-            let topConstraint = wrapperView.topAnchor.constraint(equalTo: topAnchor, constant: contentEdgeInsets.top)
+            let topConstraint = wrapperView.topAnchor.constraint(equalTo: topAnchor, constant: contentEdgeInsets.top + viewInset.top)
             topConstraint.priority = contentEdgeInsets.top == 0 ? .required : .defaultHigh
             topConstraint.isActive = true
             
-            let bottomConstraint = wrapperView.bottomAnchor.constraint(equalTo: bottomAnchor, constant: -1 * contentEdgeInsets.bottom)
+            let bottomConstraint = wrapperView.bottomAnchor.constraint(equalTo: bottomAnchor, constant: -1 * (contentEdgeInsets.bottom + viewInset.bottom))
             bottomConstraint.priority = contentEdgeInsets.bottom == 0 ? .required : .defaultHigh
             bottomConstraint.isActive = true
             
@@ -282,11 +296,30 @@ class SwipeActionsView: UIView {
     }
 }
 
+enum ActionPosition {
+    case first
+    case middle
+    case last
+    case single
+    
+    func cornerMask(orientation: SwipeActionsOrientation) -> CACornerMask {
+        switch self {
+        case .last, .middle:
+            return orientation == .right
+            ? [.layerMaxXMinYCorner, .layerMaxXMaxYCorner]
+            : [.layerMinXMinYCorner, .layerMinXMaxYCorner]
+        case .single, .first:
+            return [.layerMinXMinYCorner, .layerMaxXMinYCorner, .layerMinXMaxYCorner, .layerMaxXMaxYCorner]
+        }
+    }
+    
+}
+
 class SwipeActionButtonWrapperView: UIView {
     let contentRect: CGRect
     var actionBackgroundColor: UIColor?
     
-    init(frame: CGRect, action: SwipeAction, orientation: SwipeActionsOrientation, contentWidth: CGFloat) {
+    init(frame: CGRect, action: SwipeAction, orientation: SwipeActionsOrientation, contentWidth: CGFloat, position: ActionPosition, cornerRadius: CGFloat = .zero) {
         switch orientation {
         case .left:
             contentRect = CGRect(x: frame.width - contentWidth, y: 0, width: contentWidth, height: frame.height)
@@ -294,7 +327,11 @@ class SwipeActionButtonWrapperView: UIView {
             contentRect = CGRect(x: 0, y: 0, width: contentWidth, height: frame.height)
         }
         
-        super.init(frame: frame)
+        super.init(frame: .zero)
+        
+        layer.masksToBounds = true
+        layer.cornerRadius = cornerRadius
+        layer.maskedCorners = position.cornerMask(orientation: orientation)
         
         configureBackgroundColor(with: action)
     }

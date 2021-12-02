@@ -13,7 +13,7 @@ public typealias SwipeTableOptions = SwipeOptions
 /// The `SwipeOptions` class provides options for transistion and expansion behavior for swiped cell.
 public struct SwipeOptions {
     /// The transition style. Transition is the style of how the action buttons are exposed during the swipe.
-    public var transitionStyle: SwipeTransitionStyle = .border
+    public var transitionStyle: SwipeTransitionStyle = .drag
     
     /// The expansion style. Expansion is the behavior when the cell is swiped past a defined threshold.
     public var expansionStyle: SwipeExpansionStyle?
@@ -44,6 +44,10 @@ public struct SwipeOptions {
     
     /// The amount of space, in points, between the button image and the button title.
     public var buttonSpacing: CGFloat?
+    
+    public var actionViewEdgeInset: UIEdgeInsets = .zero
+    
+    public var actionViewCornerRadius: CGFloat = .zero
     
     /// Constructs a new `SwipeOptions` instance with default options.
     public init() {}
